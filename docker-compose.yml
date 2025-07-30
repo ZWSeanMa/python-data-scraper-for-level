@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # MongoDB服务
+  mongodb:
+    image: mongo:6.0
+    container_name: lever-jobs-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: jobscraper
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - lever-jobs-network
+
+  # 后端API服务
+  backend-api:
+    build: .
+    container_name: lever-jobs-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/
+      DB_NAME: jobscraper
+      COLLECTION_NAME: jobsprofiles
+      FLASK_ENV: development
+    depends_on:
+      - mongodb
+    networks:
+      - lever-jobs-network
+    volumes:
+      - ./logs:/app/logs
+
+  # MongoDB管理界面（可选）
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: lever-jobs-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: password123
+    depends_on:
+      - mongodb
+    networks:
+      - lever-jobs-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  lever-jobs-network:
+    driver: bridge 
